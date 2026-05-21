@@ -5,6 +5,7 @@ interface UIStore {
   detailImageId: string | null
   floatingWindows: FloatingWindowState[]
   settingsOpen: boolean
+  attributePanelOpen: boolean
 
   toggleSidebar: () => void
   openDetail: (imageId: string) => void
@@ -12,6 +13,7 @@ interface UIStore {
   addFloatingWindow: (imageId: string) => void
   removeFloatingWindow: (windowId: string) => void
   toggleSettings: () => void
+  toggleAttributePanel: () => void
 }
 
 export interface FloatingWindowState {
@@ -31,6 +33,7 @@ export const useUIStore = create<UIStore>((set) => ({
   detailImageId: null,
   floatingWindows: [],
   settingsOpen: false,
+  attributePanelOpen: false,
 
   toggleSidebar: () =>
     set((s) => ({ sidebarOpen: !s.sidebarOpen })),
@@ -62,4 +65,7 @@ export const useUIStore = create<UIStore>((set) => ({
 
   toggleSettings: () =>
     set((s) => ({ settingsOpen: !s.settingsOpen })),
+
+  toggleAttributePanel: () =>
+    set((s) => ({ attributePanelOpen: !s.attributePanelOpen })),
 }))

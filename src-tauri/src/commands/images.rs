@@ -178,7 +178,7 @@ pub fn delete_image(
         std::fs::remove_file(&tp).ok();
     }
 
-    // Delete from database (cascades to image_tags)
+    // Delete from database (cascades to image_attributes)
     conn.execute("DELETE FROM images WHERE id = ?1", rusqlite::params![image_id])
         .map_err(|e| e.to_string())?;
 

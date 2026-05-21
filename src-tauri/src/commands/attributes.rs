@@ -135,11 +135,25 @@ pub fn create_attribute(
     let id = uuid::Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
 
-    conn.execute(
+    let affected = conn.execute(
         "INSERT OR IGNORE INTO attributes (id, dimension_id, name, created_at) VALUES (?1, ?2, ?3, ?4)",
         rusqlite::params![id, dimension_id, name, now],
     )
     .map_err(|e| e.to_string())?;
+
+    // If duplicate, query existing row instead of returning fake UUID
+    if affected == 0 {
+        return conn.query_row(
+            "SELECT id, dimension_id, name, created_at FROM attributes WHERE dimension_id = ?1 AND name = ?2",
+            rusqlite::params![dimension_id, name],
+            |row| Ok(Attribute {
+                id: row.get(0)?,
+                dimension_id: row.get(1)?,
+                name: row.get(2)?,
+                created_at: row.get(3)?,
+            }),
+        ).map_err(|e| e.to_string());
+    }
 
     Ok(Attribute { id, dimension_id, name, created_at: Some(now) })
 }

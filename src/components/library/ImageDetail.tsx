@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { useUIStore } from '../../stores/uiStore'
 import { useImageStore } from '../../stores/imageStore'
 import { useAttributeStore } from '../../stores/attributeStore'
@@ -18,14 +18,21 @@ export default function ImageDetail() {
   const images = useImageStore((s) => s.images)
   const dimensions = useAttributeStore((s) => s.dimensions)
   const attributes = useAttributeStore((s) => s.attributes)
+  const addAttribute = useAttributeStore((s) => s.addAttribute)
   const imageAttributes = useAttributeStore((s) => s.imageAttributes)
   const setImageAttributes = useAttributeStore((s) => s.setImageAttributes)
+
+  const [addingForDim, setAddingForDim] = useState<string | null>(null)
+  const [newAttrName, setNewAttrName] = useState('')
 
   const image = images.find((img) => img.id === detailImageId)
   if (!image) return null
 
   const currentImageAttrs = imageAttributes[image.id] || []
   const currentAttrIds = new Set(currentImageAttrs.map((ia) => ia.attributeId))
+  const primaryAttrIds = new Set(
+    currentImageAttrs.filter((ia) => ia.isPrimary).map((ia) => ia.attributeId)
+  )
 
   const toggleAttr = useCallback(async (attrId: string) => {
     const nextIds = currentAttrIds.has(attrId)
@@ -41,9 +48,37 @@ export default function ImageDetail() {
     }
   }, [image.id, currentAttrIds, setImageAttributes])
 
+  const togglePrimary = async (attrId: string) => {
+    if (!currentAttrIds.has(attrId)) return
+    const nextPrimary = primaryAttrIds.has(attrId)
+      ? [...primaryAttrIds].filter((id) => id !== attrId)
+      : [...primaryAttrIds, attrId]
+    try {
+      await api.setPrimaryAttributes(image.id, nextPrimary)
+      setImageAttributes(image.id, currentImageAttrs.map((ia) => ({
+        ...ia,
+        isPrimary: nextPrimary.includes(ia.attributeId),
+      })))
+    } catch {}
+  }
+
+  const handleAddAttribute = async (dimId: string) => {
+    const name = newAttrName.trim()
+    if (!name) return
+    try {
+      const attr = await api.createAttribute(dimId, name)
+      addAttribute(attr)
+      // Also assign it to this image
+      const nextIds = [...currentAttrIds, attr.id]
+      const result = await api.setImageAttributes(image.id, nextIds)
+      setImageAttributes(image.id, result)
+    } catch {}
+    setNewAttrName('')
+    setAddingForDim(null)
+  }
+
   return (
     <aside className="w-80 h-full bg-surface-900 border-l border-surface-700 flex flex-col overflow-y-auto">
-      {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-surface-700">
         <h3 className="text-sm font-semibold text-surface-300">图片详情</h3>
         <button onClick={closeDetail} className="p-1 rounded hover:bg-surface-700">
@@ -53,7 +88,6 @@ export default function ImageDetail() {
         </button>
       </div>
 
-      {/* Preview */}
       <div className="p-3 border-b border-surface-700">
         <div className="rounded-lg overflow-hidden bg-surface-800">
           {image.thumbnailPath ? (
@@ -64,47 +98,91 @@ export default function ImageDetail() {
         </div>
       </div>
 
-      {/* File info */}
       <div className="p-3 border-b border-surface-700 space-y-1">
         <p className="text-sm text-surface-200 font-medium break-all">{image.filename}</p>
         <p className="text-xs text-surface-500">
           {image.width} x {image.height} · {image.fileSize ? `${(image.fileSize / 1024).toFixed(1)} KB` : ''}
         </p>
+        <div className="flex gap-1">
+          <span className="text-[10px] text-surface-600">
+            {currentImageAttrs.length} 个属性 · {primaryAttrIds.size} 个主属性
+          </span>
+        </div>
       </div>
 
-      {/* Structured attributes by dimension */}
       <div className="flex-1 overflow-y-auto p-3">
         <h4 className="text-xs font-semibold text-surface-400 uppercase mb-3">属性</h4>
         {dimensions.map((dim) => {
           const dimAttrs = attributes.filter((a) => a.dimensionId === dim.id)
+          const activeCount = dimAttrs.filter((a) => currentAttrIds.has(a.id)).length
           return (
             <div key={dim.id} className="mb-3">
               <div className="flex items-center gap-1.5 mb-1.5">
                 <span className="w-2 h-2 rounded-full" style={{ backgroundColor: dim.color }} />
                 <span className="text-[11px] text-surface-500">{dim.name}</span>
+                {activeCount > 0 && (
+                  <span className="text-[10px] text-surface-600">({activeCount})</span>
+                )}
               </div>
               <div className="flex flex-wrap gap-1">
                 {dimAttrs.map((attr) => {
                   const isActive = currentAttrIds.has(attr.id)
+                  const isPrimary = primaryAttrIds.has(attr.id)
                   return (
-                    <button key={attr.id} onClick={() => toggleAttr(attr.id)}
-                      className={`text-[10px] px-2 py-0.5 rounded-full transition-colors ${
-                        isActive
-                          ? 'bg-accent/15 text-accent border border-accent/30'
-                          : 'bg-surface-800 text-surface-500 border border-surface-700 hover:border-surface-500'
-                      }`}
-                    >
-                      {attr.name}
-                    </button>
+                    <div key={attr.id} className="relative group/attr">
+                      <button onClick={() => toggleAttr(attr.id)}
+                        className={`text-[10px] px-2 py-0.5 rounded-full transition-colors ${
+                          isActive
+                            ? 'bg-accent/15 text-accent border border-accent/30'
+                            : 'bg-surface-800 text-surface-500 border border-surface-700 hover:border-surface-500'
+                        }`}
+                      >
+                        {attr.name}
+                      </button>
+                      {isActive && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); togglePrimary(attr.id) }}
+                          className={`absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] transition-colors ${
+                            isPrimary
+                              ? 'bg-yellow-500/80 text-white'
+                              : 'bg-surface-600/80 text-surface-400 opacity-0 group-hover/attr:opacity-100'
+                          }`}
+                          title={isPrimary ? '取消主属性' : '设为主属性'}
+                        >
+                          ★
+                        </button>
+                      )}
+                    </div>
                   )
                 })}
+
+                {addingForDim === dim.id ? (
+                  <div className="flex gap-1">
+                    <input
+                      type="text"
+                      value={newAttrName}
+                      onChange={(e) => setNewAttrName(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddAttribute(dim.id)}
+                      onBlur={() => { if (!newAttrName) setAddingForDim(null) }}
+                      placeholder="新属性..."
+                      className="w-20 bg-surface-700 text-[10px] text-surface-200 px-1.5 py-0.5 rounded border border-surface-600 focus:border-accent focus:outline-none"
+                      autoFocus
+                    />
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { setAddingForDim(dim.id); setNewAttrName('') }}
+                    className="text-[10px] px-1.5 py-0.5 rounded text-surface-600 hover:text-accent hover:bg-surface-800 transition-colors"
+                  >
+                    +
+                  </button>
+                )}
               </div>
             </div>
           )
         })}
       </div>
 
-      {/* Actions */}
       <div className="p-3 border-t border-surface-700 space-y-2">
         <button
           className="w-full text-xs px-3 py-1.5 rounded bg-surface-700 hover:bg-surface-600 text-surface-300"
