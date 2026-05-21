@@ -7,7 +7,7 @@ import { isTauri } from '../../api/tauri'
 
 function assetUrl(path: string | undefined): string {
   if (!path) return ''
-  if (isTauri && path.startsWith('/')) return `https://asset.localhost/${path}`
+  if (isTauri && path.startsWith('/')) return `https://asset.localhost${path}`
   return path
 }
 
@@ -68,7 +68,7 @@ export default function ImageDetail() {
       <div className="p-3 border-b border-surface-700 space-y-1">
         <p className="text-sm text-surface-200 font-medium break-all">{image.filename}</p>
         <p className="text-xs text-surface-500">
-          {image.width} x {image.height} · {(image.fileSize! / 1024).toFixed(1)} KB
+          {image.width} x {image.height} · {image.fileSize ? `${(image.fileSize / 1024).toFixed(1)} KB` : ''}
         </p>
       </div>
 

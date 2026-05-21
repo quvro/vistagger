@@ -1,11 +1,10 @@
 import { create } from 'zustand'
-import type { ImageItem, ImageTag } from '../types'
+import type { ImageItem } from '../types'
 
 interface ImageStore {
   images: ImageItem[]
   selectedIds: Set<string>
   searchQuery: string
-  filterTagIds: string[]
 
   setImages: (images: ImageItem[]) => void
   addImage: (image: ImageItem) => void
@@ -13,15 +12,12 @@ interface ImageStore {
   selectImage: (id: string, multi?: boolean) => void
   clearSelection: () => void
   setSearchQuery: (query: string) => void
-  setFilterTagIds: (tagIds: string[]) => void
-  toggleFilterTag: (tagId: string) => void
 }
 
 export const useImageStore = create<ImageStore>((set) => ({
   images: [],
   selectedIds: new Set(),
   searchQuery: '',
-  filterTagIds: [],
 
   setImages: (images) => set({ images }),
 
@@ -48,13 +44,4 @@ export const useImageStore = create<ImageStore>((set) => ({
   clearSelection: () => set({ selectedIds: new Set() }),
 
   setSearchQuery: (searchQuery) => set({ searchQuery }),
-
-  setFilterTagIds: (filterTagIds) => set({ filterTagIds }),
-
-  toggleFilterTag: (tagId) =>
-    set((state) => ({
-      filterTagIds: state.filterTagIds.includes(tagId)
-        ? state.filterTagIds.filter((id) => id !== tagId)
-        : [...state.filterTagIds, tagId],
-    })),
 }))

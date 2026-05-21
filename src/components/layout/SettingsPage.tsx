@@ -42,7 +42,7 @@ export default function SettingsPage({ onClose }: SettingsPageProps) {
 
         {/* AI Settings */}
         <section>
-          <h2 className="text-sm font-semibold text-surface-300 mb-2">AI 标签分析</h2>
+          <h2 className="text-sm font-semibold text-surface-300 mb-2">AI 属性分析</h2>
 
           <div className="space-y-3">
             {/* Local model */}

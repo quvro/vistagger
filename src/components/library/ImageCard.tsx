@@ -6,10 +6,7 @@ import { isTauri } from '../../api/tauri'
 import type { ImageItem } from '../../types'
 
 function assetUrl(path: string): string {
-  if (isTauri) {
-    // Tauri v2: convert local file path to asset URL
-    return path.startsWith('/') ? `https://asset.localhost/${path}` : path
-  }
+  if (isTauri && path.startsWith('/')) return `https://asset.localhost${path}`
   return path
 }
 
