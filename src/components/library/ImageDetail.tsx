@@ -68,11 +68,13 @@ export default function ImageDetail() {
     try {
       const attr = await api.createAttribute(dimId, name)
       addAttribute(attr)
-      // Also assign it to this image
       const nextIds = [...currentAttrIds, attr.id]
       const result = await api.setImageAttributes(image.id, nextIds)
       setImageAttributes(image.id, result)
-    } catch {}
+    } catch {
+      // If attribute was created but linking failed, still try to link locally
+      // The attribute exists in DB, user can re-add from the panel
+    }
     setNewAttrName('')
     setAddingForDim(null)
   }

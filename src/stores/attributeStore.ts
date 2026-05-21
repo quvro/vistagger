@@ -41,10 +41,21 @@ export const useAttributeStore = create<AttributeStore>((set, get) => ({
   addDimension: (dim) =>
     set((s) => ({ dimensions: [...s.dimensions, dim] })),
   removeDimension: (id) =>
-    set((s) => ({
-      dimensions: s.dimensions.filter((d) => d.id !== id),
-      attributes: s.attributes.filter((a) => a.dimensionId !== id),
-    })),
+    set((s) => {
+      const removedAttrIds = new Set(
+        s.attributes.filter((a) => a.dimensionId === id).map((a) => a.id)
+      )
+      return {
+        dimensions: s.dimensions.filter((d) => d.id !== id),
+        attributes: s.attributes.filter((a) => a.dimensionId !== id),
+        imageAttributes: Object.fromEntries(
+          Object.entries(s.imageAttributes).map(([imgId, imgAttrs]) => [
+            imgId,
+            imgAttrs.filter((ia) => !removedAttrIds.has(ia.attributeId)),
+          ])
+        ),
+      }
+    }),
 
   // Attributes
   setAttributes: (attributes) => set({ attributes }),
