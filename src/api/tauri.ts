@@ -1,5 +1,5 @@
-// Tauri API wrapper - falls back to mock when running in browser
-import type { ImageItem, Tag, Category, ImageTag, AITagSuggestion, SimilarTagGroup, Settings } from '../types'
+// Tauri API wrapper
+import type { ImageItem, Dimension, Attribute, ImageAttribute, AIStructuredResult, Settings } from '../types'
 
 let isTauri = false
 try {
@@ -12,16 +12,16 @@ const CMD = {
   IMPORT_IMAGES: 'import_images',
   GET_IMAGES: 'get_images',
   DELETE_IMAGE: 'delete_image',
-  GET_CATEGORIES: 'get_categories',
-  CREATE_CATEGORY: 'create_category',
-  UPDATE_CATEGORY: 'update_category',
-  DELETE_CATEGORY: 'delete_category',
-  GET_TAGS: 'get_tags',
-  CREATE_TAG: 'create_tag',
-  DELETE_TAG: 'delete_tag',
-  SET_IMAGE_TAGS: 'set_image_tags',
-  GET_TAG_SIMILARITIES: 'get_tag_similarities',
-  MERGE_SIMILAR_TAGS: 'merge_similar_tags',
+  GET_DIMENSIONS: 'get_dimensions',
+  CREATE_DIMENSION: 'create_dimension',
+  UPDATE_DIMENSION: 'update_dimension',
+  DELETE_DIMENSION: 'delete_dimension',
+  GET_ATTRIBUTES: 'get_attributes',
+  CREATE_ATTRIBUTE: 'create_attribute',
+  DELETE_ATTRIBUTE: 'delete_attribute',
+  SET_IMAGE_ATTRIBUTES: 'set_image_attributes',
+  GET_IMAGE_ATTRIBUTES: 'get_image_attributes',
+  SET_PRIMARY_ATTRIBUTES: 'set_primary_attributes',
   ANALYZE_IMAGE: 'analyze_image',
   ANALYZE_IMAGE_CLOUD: 'analyze_image_cloud',
   CAPTURE_SCREENSHOT: 'capture_screenshot',
@@ -37,14 +37,14 @@ async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T
     const { invoke: tauriInvoke } = await import('@tauri-apps/api/core')
     return tauriInvoke<T>(cmd, args)
   }
-  console.warn(`[Mock] Tauri command not available: ${cmd}`, args)
+  console.warn(`[Mock] Tauri not available: ${cmd}`)
   throw new Error(`Tauri not available. Command "${cmd}" requires desktop runtime.`)
 }
 
 // ==================== Images ====================
 
-export async function importImages(filePaths?: string[]): Promise<ImageItem[]> {
-  return invoke<ImageItem[]>(CMD.IMPORT_IMAGES, { filePaths })
+export async function importImages(): Promise<ImageItem[]> {
+  return invoke<ImageItem[]>(CMD.IMPORT_IMAGES)
 }
 
 export async function getImages(): Promise<ImageItem[]> {
@@ -55,60 +55,60 @@ export async function deleteImage(imageId: string): Promise<void> {
   return invoke(CMD.DELETE_IMAGE, { imageId })
 }
 
-// ==================== Categories ====================
+// ==================== Dimensions ====================
 
-export async function getCategories(): Promise<Category[]> {
-  return invoke<Category[]>(CMD.GET_CATEGORIES)
+export async function getDimensions(): Promise<Dimension[]> {
+  return invoke<Dimension[]>(CMD.GET_DIMENSIONS)
 }
 
-export async function createCategory(name: string, color?: string): Promise<Category> {
-  return invoke<Category>(CMD.CREATE_CATEGORY, { name, color })
+export async function createDimension(name: string, color?: string): Promise<Dimension> {
+  return invoke<Dimension>(CMD.CREATE_DIMENSION, { name, color })
 }
 
-export async function updateCategory(categoryId: string, data: { name?: string; color?: string }): Promise<void> {
-  return invoke(CMD.UPDATE_CATEGORY, { categoryId, ...data })
+export async function updateDimension(dimId: string, data: { name?: string; color?: string }): Promise<void> {
+  return invoke(CMD.UPDATE_DIMENSION, { dimensionId: dimId, ...data })
 }
 
-export async function deleteCategory(categoryId: string): Promise<void> {
-  return invoke(CMD.DELETE_CATEGORY, { categoryId })
+export async function deleteDimension(dimId: string): Promise<void> {
+  return invoke(CMD.DELETE_DIMENSION, { dimensionId: dimId })
 }
 
-// ==================== Tags ====================
+// ==================== Attributes ====================
 
-export async function getTags(): Promise<Tag[]> {
-  return invoke<Tag[]>(CMD.GET_TAGS)
+export async function getAttributes(): Promise<Attribute[]> {
+  return invoke<Attribute[]>(CMD.GET_ATTRIBUTES)
 }
 
-export async function createTag(name: string, categoryId: string, color?: string): Promise<Tag> {
-  return invoke<Tag>(CMD.CREATE_TAG, { name, categoryId, color })
+export async function createAttribute(dimensionId: string, name: string): Promise<Attribute> {
+  return invoke<Attribute>(CMD.CREATE_ATTRIBUTE, { dimensionId, name })
 }
 
-export async function deleteTag(tagId: string): Promise<void> {
-  return invoke(CMD.DELETE_TAG, { tagId })
+export async function deleteAttribute(attrId: string): Promise<void> {
+  return invoke(CMD.DELETE_ATTRIBUTE, { attributeId: attrId })
 }
 
-export async function setImageTags(imageId: string, tagIds: string[]): Promise<ImageTag[]> {
-  return invoke<ImageTag[]>(CMD.SET_IMAGE_TAGS, { imageId, tagIds })
+// ==================== Image-Attributes ====================
+
+export async function setImageAttributes(imageId: string, attrIds: string[]): Promise<ImageAttribute[]> {
+  return invoke<ImageAttribute[]>(CMD.SET_IMAGE_ATTRIBUTES, { imageId, attributeIds: attrIds })
 }
 
-// ==================== Tag Similarities ====================
-
-export async function getTagSimilarities(): Promise<SimilarTagGroup[]> {
-  return invoke<SimilarTagGroup[]>(CMD.GET_TAG_SIMILARITIES)
+export async function getImageAttributes(imageId: string): Promise<ImageAttribute[]> {
+  return invoke<ImageAttribute[]>(CMD.GET_IMAGE_ATTRIBUTES, { imageId })
 }
 
-export async function mergeSimilarTags(tagAId: string, tagBId: string, targetName: string): Promise<void> {
-  return invoke(CMD.MERGE_SIMILAR_TAGS, { tagAId, tagBId, targetName })
+export async function setPrimaryAttributes(imageId: string, attrIds: string[]): Promise<void> {
+  return invoke(CMD.SET_PRIMARY_ATTRIBUTES, { imageId, attributeIds: attrIds })
 }
 
 // ==================== AI ====================
 
-export async function analyzeImageLocal(imageId: string): Promise<AITagSuggestion[]> {
-  return invoke<AITagSuggestion[]>(CMD.ANALYZE_IMAGE, { imageId })
+export async function analyzeImageLocal(imageId: string): Promise<AIStructuredResult> {
+  return invoke<AIStructuredResult>(CMD.ANALYZE_IMAGE, { imageId })
 }
 
-export async function analyzeImageCloud(imageId: string): Promise<AITagSuggestion[]> {
-  return invoke<AITagSuggestion[]>(CMD.ANALYZE_IMAGE_CLOUD, { imageId })
+export async function analyzeImageCloud(imageId: string): Promise<AIStructuredResult> {
+  return invoke<AIStructuredResult>(CMD.ANALYZE_IMAGE_CLOUD, { imageId })
 }
 
 // ==================== Screenshot ====================

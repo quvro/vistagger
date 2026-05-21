@@ -1,48 +1,52 @@
 import { useCallback } from 'react'
 import { useUIStore } from '../../stores/uiStore'
 import { useImageStore } from '../../stores/imageStore'
-import { useTagStore } from '../../stores/tagStore'
+import { useAttributeStore } from '../../stores/attributeStore'
 import * as api from '../../api/tauri'
+import { isTauri } from '../../api/tauri'
+
+function assetUrl(path: string | undefined): string {
+  if (!path) return ''
+  if (isTauri && path.startsWith('/')) return `https://asset.localhost/${path}`
+  return path
+}
 
 export default function ImageDetail() {
   const detailImageId = useUIStore((s) => s.detailImageId)
   const closeDetail = useUIStore((s) => s.closeDetail)
   const addFloatingWindow = useUIStore((s) => s.addFloatingWindow)
   const images = useImageStore((s) => s.images)
-  const tags = useTagStore((s) => s.tags)
-  const categories = useTagStore((s) => s.categories)
-  const imageTags = useTagStore((s) => s.imageTags)
-  const setImageTags = useTagStore((s) => s.setImageTags)
+  const dimensions = useAttributeStore((s) => s.dimensions)
+  const attributes = useAttributeStore((s) => s.attributes)
+  const imageAttributes = useAttributeStore((s) => s.imageAttributes)
+  const setImageAttributes = useAttributeStore((s) => s.setImageAttributes)
 
   const image = images.find((img) => img.id === detailImageId)
   if (!image) return null
 
-  const currentImageTags = imageTags[image.id] || []
-  const currentTagIds = new Set(currentImageTags.map((it) => it.tagId))
+  const currentImageAttrs = imageAttributes[image.id] || []
+  const currentAttrIds = new Set(currentImageAttrs.map((ia) => ia.attributeId))
 
-  const toggleTag = useCallback(async (tagId: string) => {
-    const nextIds = currentTagIds.has(tagId)
-      ? [...currentTagIds].filter((id) => id !== tagId)
-      : [...currentTagIds, tagId]
+  const toggleAttr = useCallback(async (attrId: string) => {
+    const nextIds = currentAttrIds.has(attrId)
+      ? [...currentAttrIds].filter((id) => id !== attrId)
+      : [...currentAttrIds, attrId]
     try {
-      const result = await api.setImageTags(image.id, nextIds)
-      setImageTags(image.id, result)
+      const result = await api.setImageAttributes(image.id, nextIds)
+      setImageAttributes(image.id, result)
     } catch {
-      setImageTags(image.id, nextIds.map((tagId) => ({
-        imageId: image.id, tagId, isAuto: false,
+      setImageAttributes(image.id, nextIds.map((attributeId) => ({
+        imageId: image.id, attributeId, isAuto: false, isPrimary: false,
       })))
     }
-  }, [image.id, currentTagIds, setImageTags])
+  }, [image.id, currentAttrIds, setImageAttributes])
 
   return (
     <aside className="w-80 h-full bg-surface-900 border-l border-surface-700 flex flex-col overflow-y-auto">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-surface-700">
         <h3 className="text-sm font-semibold text-surface-300">图片详情</h3>
-        <button
-          onClick={closeDetail}
-          className="p-1 rounded hover:bg-surface-700 transition-colors"
-        >
+        <button onClick={closeDetail} className="p-1 rounded hover:bg-surface-700">
           <svg className="w-4 h-4 text-surface-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
@@ -53,55 +57,44 @@ export default function ImageDetail() {
       <div className="p-3 border-b border-surface-700">
         <div className="rounded-lg overflow-hidden bg-surface-800">
           {image.thumbnailPath ? (
-            <img src={image.thumbnailPath} alt={image.filename} className="w-full object-contain" />
+            <img src={assetUrl(image.thumbnailPath)} alt={image.filename} className="w-full object-contain" />
           ) : (
-            <div className="aspect-[4/3] flex items-center justify-center text-surface-500 text-sm">
-              无预览
-            </div>
+            <div className="aspect-[4/3] flex items-center justify-center text-surface-500 text-sm">无预览</div>
           )}
         </div>
       </div>
 
-      {/* Info */}
-      <div className="p-3 border-b border-surface-700 space-y-1.5">
+      {/* File info */}
+      <div className="p-3 border-b border-surface-700 space-y-1">
         <p className="text-sm text-surface-200 font-medium break-all">{image.filename}</p>
         <p className="text-xs text-surface-500">
-          {image.width} x {image.height} · {image.format.toUpperCase()}
+          {image.width} x {image.height} · {(image.fileSize! / 1024).toFixed(1)} KB
         </p>
-        {image.sourceUrl && (
-          <p className="text-xs text-surface-500 truncate" title={image.sourceUrl}>
-            来源: {image.sourceUrl}
-          </p>
-        )}
       </div>
 
-      {/* Tags by category */}
+      {/* Structured attributes by dimension */}
       <div className="flex-1 overflow-y-auto p-3">
-        <h4 className="text-xs font-semibold text-surface-400 uppercase mb-2">标签</h4>
-
-        {categories.map((cat) => {
-          const catTags = tags.filter((t) => t.categoryId === cat.id)
-          if (catTags.length === 0) return null
+        <h4 className="text-xs font-semibold text-surface-400 uppercase mb-3">属性</h4>
+        {dimensions.map((dim) => {
+          const dimAttrs = attributes.filter((a) => a.dimensionId === dim.id)
           return (
-            <div key={cat.id} className="mb-3">
+            <div key={dim.id} className="mb-3">
               <div className="flex items-center gap-1.5 mb-1.5">
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.color }} />
-                <span className="text-[11px] text-surface-500">{cat.name}</span>
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: dim.color }} />
+                <span className="text-[11px] text-surface-500">{dim.name}</span>
               </div>
               <div className="flex flex-wrap gap-1">
-                {catTags.map((tag) => {
-                  const isActive = currentTagIds.has(tag.id)
+                {dimAttrs.map((attr) => {
+                  const isActive = currentAttrIds.has(attr.id)
                   return (
-                    <button
-                      key={tag.id}
-                      onClick={() => toggleTag(tag.id)}
-                      className={`text-xs px-2 py-0.5 rounded-full transition-colors ${
+                    <button key={attr.id} onClick={() => toggleAttr(attr.id)}
+                      className={`text-[10px] px-2 py-0.5 rounded-full transition-colors ${
                         isActive
-                          ? 'bg-accent/20 text-accent border border-accent/30'
-                          : 'bg-surface-800 text-surface-400 border border-surface-700 hover:border-surface-500'
+                          ? 'bg-accent/15 text-accent border border-accent/30'
+                          : 'bg-surface-800 text-surface-500 border border-surface-700 hover:border-surface-500'
                       }`}
                     >
-                      {tag.name}
+                      {attr.name}
                     </button>
                   )
                 })}
@@ -109,27 +102,19 @@ export default function ImageDetail() {
             </div>
           )
         })}
-
-        {tags.length === 0 && (
-          <p className="text-xs text-surface-500">暂无标签，请先导入图片并创建标签</p>
-        )}
-      </div>
-
-      {/* AI Analysis */}
-      <div className="p-3 border-t border-surface-700">
-        <button
-          className="w-full text-xs px-3 py-1.5 rounded bg-surface-700 hover:bg-surface-600 text-surface-300 transition-colors mb-2"
-          onClick={() => alert('AI 分析将在 Step 4 实现')}
-        >
-          AI 自动分析标签
-        </button>
       </div>
 
       {/* Actions */}
-      <div className="p-3 pt-0 space-y-2">
+      <div className="p-3 border-t border-surface-700 space-y-2">
+        <button
+          className="w-full text-xs px-3 py-1.5 rounded bg-surface-700 hover:bg-surface-600 text-surface-300"
+          onClick={() => alert('AI 分析将在 Step 4 实现')}
+        >
+          AI 自动分析属性
+        </button>
         <button
           onClick={() => addFloatingWindow(image.id)}
-          className="w-full text-xs px-3 py-2 rounded bg-accent hover:bg-accent-hover text-white transition-colors"
+          className="w-full text-xs px-3 py-2 rounded bg-accent hover:bg-accent-hover text-white"
         >
           在浮窗中打开
         </button>

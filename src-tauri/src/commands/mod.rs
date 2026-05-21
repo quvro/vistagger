@@ -1,5 +1,5 @@
 pub mod images;
-pub mod tags;
+pub mod attributes;
 pub mod import_cmd;
 pub mod floating;
 pub mod ai;

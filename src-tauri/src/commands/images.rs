@@ -54,15 +54,14 @@ pub async fn import_images(
     app: tauri::AppHandle,
     db: State<'_, DbState>,
 ) -> Result<Vec<ImageItem>, String> {
-    // Open file dialog for image selection
     use tauri_plugin_dialog::DialogExt;
     let files = app
         .dialog()
         .file()
         .add_filter("Images", &["png", "jpg", "jpeg", "gif", "webp", "bmp", "tiff"])
-        .blocking_pick_files();
+        .pick_files();
 
-    match files {
+    match files.await {
         Some(paths) => {
             let mut imported = Vec::new();
             let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;

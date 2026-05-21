@@ -1,7 +1,7 @@
 mod commands;
 mod db;
 
-use commands::{images, tags, import_cmd, floating, ai, settings};
+use commands::{images, attributes, import_cmd, floating, ai, settings};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -11,30 +11,28 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_shell::init())
         .setup(|app| {
-            // Initialize database and create tables
-            if let Ok(data_dir) = app.path().app_data_dir() {
-                std::fs::create_dir_all(&data_dir).ok();
-                let db_path = data_dir.join("easepic.db");
-                if let Ok(db) = db::init_database(db_path.to_str().unwrap_or("easepic.db")) {
-                    app.manage(db);
-                }
-            }
+            let data_dir = app.path().app_data_dir().expect("failed to resolve app data dir");
+            std::fs::create_dir_all(&data_dir).ok();
+            let db_path = data_dir.join("vistagger.db");
+            let db = db::init_database(db_path.to_str().unwrap_or("vistagger.db"))
+                .expect("failed to initialize database");
+            app.manage(db);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             images::get_images,
             images::import_images,
             images::delete_image,
-            tags::get_categories,
-            tags::create_category,
-            tags::update_category,
-            tags::delete_category,
-            tags::get_tags,
-            tags::create_tag,
-            tags::delete_tag,
-            tags::set_image_tags,
-            tags::get_tag_similarities,
-            tags::merge_similar_tags,
+            attributes::get_dimensions,
+            attributes::create_dimension,
+            attributes::update_dimension,
+            attributes::delete_dimension,
+            attributes::get_attributes,
+            attributes::create_attribute,
+            attributes::delete_attribute,
+            attributes::set_image_attributes,
+            attributes::get_image_attributes,
+            attributes::set_primary_attributes,
             ai::analyze_image,
             ai::analyze_image_cloud,
             import_cmd::capture_screenshot,

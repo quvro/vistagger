@@ -15,51 +15,48 @@ export interface ImageItem {
   updatedAt: string
 }
 
-// ==================== Category ====================
+// ==================== Dimension ====================
 
-export interface Category {
+export interface Dimension {
   id: string
   name: string
   color: string
   sortOrder: number
 }
 
-// ==================== Tag ====================
+// ==================== Attribute ====================
 
-export interface Tag {
+export interface Attribute {
   id: string
+  dimensionId: string
   name: string
-  categoryId: string
-  color?: string
   createdAt?: string
 }
 
-export interface TagWithCategory extends Tag {
-  categoryName: string
-  categoryColor: string
+// Attribute joined with its dimension info (for display)
+export interface AttributeWithDimension extends Attribute {
+  dimensionName: string
+  dimensionColor: string
 }
 
-// ==================== Image-Tag ====================
+// ==================== Image-Attribute ====================
 
-export interface ImageTag {
+export interface ImageAttribute {
   imageId: string
-  tagId: string
+  attributeId: string
   confidence?: number
   isAuto: boolean
+  isPrimary: boolean
 }
 
 // ==================== AI ====================
 
-export interface AITagSuggestion {
-  tagName: string
-  category: string
-  confidence: number
-}
-
-export interface SimilarTagGroup {
-  tags: Tag[]
-  suggestedName: string
-  reason: string
+export interface AIStructuredResult {
+  attributes: Array<{
+    dimension: string
+    value: string
+    confidence: number
+  }>
 }
 
 // ==================== Settings ====================

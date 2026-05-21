@@ -1,6 +1,17 @@
 import { useImageStore } from '../../stores/imageStore'
+import { useAttributeStore } from '../../stores/attributeStore'
 import { useUIStore } from '../../stores/uiStore'
+import AttributeBadge from '../attributes/AttributeBadge'
+import { isTauri } from '../../api/tauri'
 import type { ImageItem } from '../../types'
+
+function assetUrl(path: string): string {
+  if (isTauri) {
+    // Tauri v2: convert local file path to asset URL
+    return path.startsWith('/') ? `https://asset.localhost/${path}` : path
+  }
+  return path
+}
 
 interface ImageCardProps {
   image: ImageItem
@@ -11,20 +22,16 @@ export default function ImageCard({ image }: ImageCardProps) {
   const selectImage = useImageStore((s) => s.selectImage)
   const openDetail = useUIStore((s) => s.openDetail)
   const addFloatingWindow = useUIStore((s) => s.addFloatingWindow)
+  const attributes = useAttributeStore((s) => s.attributes)
+  const dimensions = useAttributeStore((s) => s.dimensions)
+  const imageAttributes = useAttributeStore((s) => s.imageAttributes)
 
   const isSelected = selectedIds.has(image.id)
+  const currentAttrs = imageAttributes[image.id] || []
+  const primaryAttrs = currentAttrs.filter((ia) => ia.isPrimary)
 
   const handleClick = (e: React.MouseEvent) => {
     selectImage(image.id, e.ctrlKey || e.metaKey)
-  }
-
-  const handleDoubleClick = () => {
-    openDetail(image.id)
-  }
-
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault()
-    // Future: show context menu
   }
 
   return (
@@ -33,46 +40,45 @@ export default function ImageCard({ image }: ImageCardProps) {
         isSelected ? 'border-accent' : 'border-transparent hover:border-surface-600'
       }`}
       onClick={handleClick}
-      onDoubleClick={handleDoubleClick}
-      onContextMenu={handleContextMenu}
+      onDoubleClick={() => openDetail(image.id)}
     >
       {/* Thumbnail */}
       <div className="aspect-[4/3] bg-surface-800 flex items-center justify-center">
         {image.thumbnailPath ? (
-          <img
-            src={image.thumbnailPath}
-            alt={image.filename}
-            className="w-full h-full object-cover"
-            loading="lazy"
-          />
+          <img src={assetUrl(image.thumbnailPath)} alt={image.filename} className="w-full h-full object-cover" loading="lazy" />
         ) : (
-          <div className="flex flex-col items-center gap-2 text-surface-500">
-            <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <span className="text-xs">无预览</span>
-          </div>
+          <svg className="w-10 h-10 text-surface-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
         )}
       </div>
 
       {/* Info */}
-      <div className="px-2 py-1.5 bg-surface-800">
-        <p className="text-xs text-surface-300 truncate" title={image.filename}>
-          {image.filename}
-        </p>
-        <p className="text-[10px] text-surface-500 mt-0.5">
-          {image.width}x{image.height}
-          {image.sourceUrl && ' · 来自网页'}
-        </p>
+      <div className="px-2 py-1.5 bg-surface-800 space-y-1">
+        <p className="text-[11px] text-surface-300 truncate" title={image.filename}>{image.filename}</p>
+        {/* Primary attribute badges (max 4) */}
+        {primaryAttrs.length > 0 && (
+          <div className="flex flex-wrap gap-0.5">
+            {primaryAttrs.slice(0, 4).map((ia) => {
+              const attr = attributes.find((a) => a.id === ia.attributeId)
+              const dim = attr ? dimensions.find((d) => d.id === attr.dimensionId) : null
+              if (!attr) return null
+              return <AttributeBadge key={attr.id} name={attr.name} color={dim?.color} />
+            })}
+          </div>
+        )}
+        {/* Show count if no attributes yet */}
+        {primaryAttrs.length === 0 && (
+          <p className="text-[10px] text-surface-600">
+            {image.width && image.height ? `${image.width}×${image.height}` : ''}
+          </p>
+        )}
       </div>
 
-      {/* Hover actions */}
-      <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5">
+      {/* Hover: float button */}
+      <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
-          onClick={(e) => {
-            e.stopPropagation()
-            addFloatingWindow(image.id)
-          }}
+          onClick={(e) => { e.stopPropagation(); addFloatingWindow(image.id) }}
           className="p-1 rounded bg-surface-700/80 hover:bg-surface-600 text-surface-300"
           title="浮窗打开"
         >
@@ -82,7 +88,7 @@ export default function ImageCard({ image }: ImageCardProps) {
         </button>
       </div>
 
-      {/* Selection badge */}
+      {/* Selection check */}
       {isSelected && (
         <div className="absolute top-1 left-1 w-5 h-5 rounded-full bg-accent flex items-center justify-center">
           <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">

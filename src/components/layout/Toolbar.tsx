@@ -1,21 +1,26 @@
 import { useImageStore } from '../../stores/imageStore'
 import { useUIStore } from '../../stores/uiStore'
+import * as api from '../../api/tauri'
 
 export default function Toolbar() {
   const searchQuery = useImageStore((s) => s.searchQuery)
   const setSearchQuery = useImageStore((s) => s.setSearchQuery)
+  const addImage = useImageStore((s) => s.addImage)
   const toggleSidebar = useUIStore((s) => s.toggleSidebar)
   const sidebarOpen = useUIStore((s) => s.sidebarOpen)
   const toggleSettings = useUIStore((s) => s.toggleSettings)
 
-  const handleImport = () => {
-    // Will be implemented via Tauri dialog in Step 2
-    alert('导入功能将在 Step 2 中实现')
+  const handleImport = async () => {
+    try {
+      const newImages = await api.importImages()
+      newImages.forEach((img) => addImage(img))
+    } catch {
+      alert('请在 Tauri 桌面环境中运行导入功能')
+    }
   }
 
   const handleScreenshot = () => {
-    // Will be implemented via Tauri screenshot in Step 5
-    alert('截图功能将在 Step 5 中实现')
+    alert('截图功能将在 Step 5 实现')
   }
 
   return (
