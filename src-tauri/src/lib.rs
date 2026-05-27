@@ -1,6 +1,7 @@
 mod commands;
 mod db;
 
+use tauri::Manager;
 use commands::{images, attributes, import_cmd, floating, ai, settings};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

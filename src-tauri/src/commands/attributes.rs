@@ -35,8 +35,7 @@ pub fn get_dimensions(db: State<DbState>) -> Result<Vec<Dimension>, String> {
     let mut stmt = conn
         .prepare("SELECT id, name, color, sort_order FROM dimensions ORDER BY sort_order")
         .map_err(|e| e.to_string())?;
-
-    stmt.query_map([], |row| {
+    let rows = stmt.query_map([], |row| {
         Ok(Dimension {
             id: row.get(0)?,
             name: row.get(1)?,
@@ -44,9 +43,13 @@ pub fn get_dimensions(db: State<DbState>) -> Result<Vec<Dimension>, String> {
             sort_order: row.get(3)?,
         })
     })
-    .map_err(|e| e.to_string())?
-    .collect::<Result<Vec<_>, _>>()
-    .map_err(|e| e.to_string())
+    .map_err(|e| e.to_string())?;
+
+    let mut result = Vec::new();
+    for row in rows {
+        result.push(row.map_err(|e| e.to_string())?);
+    }
+    Ok(result)
 }
 
 #[tauri::command]
@@ -111,8 +114,7 @@ pub fn get_attributes(db: State<DbState>) -> Result<Vec<Attribute>, String> {
     let mut stmt = conn
         .prepare("SELECT id, dimension_id, name, created_at FROM attributes ORDER BY dimension_id, name")
         .map_err(|e| e.to_string())?;
-
-    stmt.query_map([], |row| {
+    let rows = stmt.query_map([], |row| {
         Ok(Attribute {
             id: row.get(0)?,
             dimension_id: row.get(1)?,
@@ -120,9 +122,13 @@ pub fn get_attributes(db: State<DbState>) -> Result<Vec<Attribute>, String> {
             created_at: row.get(3)?,
         })
     })
-    .map_err(|e| e.to_string())?
-    .collect::<Result<Vec<_>, _>>()
-    .map_err(|e| e.to_string())
+    .map_err(|e| e.to_string())?;
+
+    let mut result = Vec::new();
+    for row in rows {
+        result.push(row.map_err(|e| e.to_string())?);
+    }
+    Ok(result)
 }
 
 #[tauri::command]
@@ -210,8 +216,7 @@ fn get_image_attributes_internal(
     let mut stmt = conn
         .prepare("SELECT image_id, attribute_id, confidence, is_auto, is_primary FROM image_attributes WHERE image_id = ?1")
         .map_err(|e| e.to_string())?;
-
-    stmt.query_map(rusqlite::params![image_id], |row| {
+    let rows = stmt.query_map(rusqlite::params![image_id], |row| {
         Ok(ImageAttribute {
             image_id: row.get(0)?,
             attribute_id: row.get(1)?,
@@ -220,9 +225,13 @@ fn get_image_attributes_internal(
             is_primary: row.get::<_, i32>(4)? != 0,
         })
     })
-    .map_err(|e| e.to_string())?
-    .collect::<Result<Vec<_>, _>>()
-    .map_err(|e| e.to_string())
+    .map_err(|e| e.to_string())?;
+
+    let mut result = Vec::new();
+    for row in rows {
+        result.push(row.map_err(|e| e.to_string())?);
+    }
+    Ok(result)
 }
 
 #[tauri::command]

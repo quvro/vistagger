@@ -4,8 +4,8 @@ use crate::commands::images::ImageItem;
 
 #[tauri::command]
 pub async fn capture_screenshot(
-    app: tauri::AppHandle,
-    db: State<'_, DbState>,
+    _app: tauri::AppHandle,
+    _db: State<'_, DbState>,
 ) -> Result<ImageItem, String> {
     // Screenshot functionality will be fully implemented in Step 5
     // For now, returns a placeholder error

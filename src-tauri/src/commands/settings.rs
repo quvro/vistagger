@@ -74,6 +74,6 @@ pub async fn open_folder_dialog(
     app: tauri::AppHandle,
 ) -> Result<Option<String>, String> {
     use tauri_plugin_dialog::DialogExt;
-    let folder = app.dialog().file().pick_folder().await;
+    let folder = app.dialog().file().blocking_pick_folder();
     Ok(folder.map(|p| p.to_string()))
 }

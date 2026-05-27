@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use tauri::State;
+use tauri::{State, Manager};
 use crate::db::DbState;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -59,9 +59,9 @@ pub async fn import_images(
         .dialog()
         .file()
         .add_filter("Images", &["png", "jpg", "jpeg", "gif", "webp", "bmp", "tiff"])
-        .pick_files();
+        .blocking_pick_files();
 
-    match files.await {
+    match files {
         Some(paths) => {
             let mut imported = Vec::new();
             let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
