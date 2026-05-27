@@ -27,7 +27,7 @@ pub fn get_settings(db: State<DbState>) -> Result<Settings, String> {
         .or_else(|_| std::env::var("USERPROFILE"))
         .unwrap_or_else(|_| ".".to_string());
     let data_dir = std::path::Path::new(&home)
-        .join("EasePic")
+        .join("VisTagger")
         .to_string_lossy()
         .to_string();
 

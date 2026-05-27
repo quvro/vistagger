@@ -21,10 +21,9 @@ export default function ImageCard({ image }: ImageCardProps) {
   const addFloatingWindow = useUIStore((s) => s.addFloatingWindow)
   const attributes = useAttributeStore((s) => s.attributes)
   const dimensions = useAttributeStore((s) => s.dimensions)
-  const imageAttributes = useAttributeStore((s) => s.imageAttributes)
+  const currentAttrs = useAttributeStore((s) => s.imageAttributes[image.id]) || []
 
   const isSelected = selectedIds.has(image.id)
-  const currentAttrs = imageAttributes[image.id] || []
   const primaryAttrs = currentAttrs.filter((ia) => ia.isPrimary)
 
   const handleClick = (e: React.MouseEvent) => {

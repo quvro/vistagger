@@ -96,9 +96,10 @@ pub async fn import_images(
                 let (width, height) = match image::open(&stored_path) {
                     Ok(img) => {
                         let (w, h) = (img.width() as i32, img.height() as i32);
-                        // Generate thumbnail
                         let thumb = img.thumbnail(400, 300);
-                        thumb.save(&thumb_path).ok();
+                        if let Err(e) = thumb.save(&thumb_path) {
+                            eprintln!("Failed to save thumbnail {}: {}", stored_name, e);
+                        }
                         (Some(w), Some(h))
                     }
                     Err(_) => (None, None),
