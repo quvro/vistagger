@@ -4,6 +4,7 @@ import { useImageStore } from '../../stores/imageStore'
 import { useAttributeStore } from '../../stores/attributeStore'
 import * as api from '../../api/tauri'
 import { isTauri } from '../../api/tauri'
+import type { AIStructuredResult } from '../../types'
 
 function assetUrl(path: string | undefined): string {
   if (!path) return ''
@@ -24,6 +25,8 @@ export default function ImageDetail() {
 
   const [addingForDim, setAddingForDim] = useState<string | null>(null)
   const [newAttrName, setNewAttrName] = useState('')
+  const [analyzing, setAnalyzing] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
 
   const image = images.find((img) => img.id === detailImageId)
   if (!image) return null
@@ -185,12 +188,37 @@ export default function ImageDetail() {
         })}
       </div>
 
+  const handleAnalyze = async () => {
+    setAnalyzing(true)
+    setAiError(null)
+    try {
+      await api.analyzeImageCloud(image.id)
+      // Reload image attributes + all attributes (new ones may have been created)
+      const [imgAttrs, allAttrs] = await Promise.all([
+        api.getImageAttributes(image.id),
+        api.getAttributes(),
+      ])
+      setImageAttributes(image.id, imgAttrs)
+      useAttributeStore.getState().setAttributes(allAttrs)
+    } catch (e: any) {
+      setAiError(e?.toString() || '分析失败')
+    } finally {
+      setAnalyzing(false)
+    }
+  }
+
+  ...
+
       <div className="p-3 border-t border-surface-700 space-y-2">
+        {aiError && (
+          <p className="text-[10px] text-red-400 mb-1">{aiError}</p>
+        )}
         <button
-          className="w-full text-xs px-3 py-1.5 rounded bg-surface-700 hover:bg-surface-600 text-surface-300"
-          onClick={() => alert('AI 分析将在 Step 4 实现')}
+          className="w-full text-xs px-3 py-1.5 rounded bg-surface-700 hover:bg-surface-600 text-surface-300 disabled:opacity-50"
+          onClick={handleAnalyze}
+          disabled={analyzing}
         >
-          AI 自动分析属性
+          {analyzing ? 'AI 分析中...' : 'AI 自动分析属性'}
         </button>
         <button
           onClick={() => addFloatingWindow(image.id)}
