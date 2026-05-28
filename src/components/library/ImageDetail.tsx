@@ -82,6 +82,24 @@ export default function ImageDetail() {
     setAddingForDim(null)
   }
 
+  const handleAnalyze = async () => {
+    setAnalyzing(true)
+    setAiError(null)
+    try {
+      await api.analyzeImageCloud(image.id)
+      const [imgAttrs, allAttrs] = await Promise.all([
+        api.getImageAttributes(image.id),
+        api.getAttributes(),
+      ])
+      setImageAttributes(image.id, imgAttrs)
+      useAttributeStore.getState().setAttributes(allAttrs)
+    } catch (e: any) {
+      setAiError(e?.toString() || '分析失败')
+    } finally {
+      setAnalyzing(false)
+    }
+  }
+
   return (
     <aside className="w-80 h-full bg-surface-900 border-l border-surface-700 flex flex-col overflow-y-auto">
       <div className="flex items-center justify-between px-3 py-2 border-b border-surface-700">
@@ -187,27 +205,6 @@ export default function ImageDetail() {
           )
         })}
       </div>
-
-  const handleAnalyze = async () => {
-    setAnalyzing(true)
-    setAiError(null)
-    try {
-      await api.analyzeImageCloud(image.id)
-      // Reload image attributes + all attributes (new ones may have been created)
-      const [imgAttrs, allAttrs] = await Promise.all([
-        api.getImageAttributes(image.id),
-        api.getAttributes(),
-      ])
-      setImageAttributes(image.id, imgAttrs)
-      useAttributeStore.getState().setAttributes(allAttrs)
-    } catch (e: any) {
-      setAiError(e?.toString() || '分析失败')
-    } finally {
-      setAnalyzing(false)
-    }
-  }
-
-  ...
 
       <div className="p-3 border-t border-surface-700 space-y-2">
         {aiError && (

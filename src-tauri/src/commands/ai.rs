@@ -95,14 +95,17 @@ pub async fn analyze_image_cloud(
 
     // 2. Read and encode image
     let image_data = std::fs::read(&stored_path).map_err(|e| format!("读取图片失败: {}", e))?;
-    let mime_type = if stored_path.ends_with(".png") {
-        "image/png"
-    } else if stored_path.ends_with(".webp") {
-        "image/webp"
-    } else if stored_path.ends_with(".gif") {
-        "image/gif"
-    } else {
-        "image/jpeg"
+    let mime_type = {
+        let lower = stored_path.to_lowercase();
+        if lower.ends_with(".png") {
+            "image/png"
+        } else if lower.ends_with(".webp") {
+            "image/webp"
+        } else if lower.ends_with(".gif") {
+            "image/gif"
+        } else {
+            "image/jpeg"
+        }
     };
     let base64_image = BASE64.encode(&image_data);
 
@@ -141,10 +144,18 @@ pub async fn analyze_image_cloud(
         .await
         .map_err(|e| format!("API 请求失败: {}", e))?;
 
+    let status = response.status();
     let response_json: Value = response
         .json()
         .await
         .map_err(|e| format!("解析响应失败: {}", e))?;
+
+    if !status.is_success() {
+        let err_msg = response_json["error"]["message"]
+            .as_str()
+            .unwrap_or("未知错误");
+        return Err(format!("API 错误 ({}): {}", status.as_u16(), err_msg));
+    }
 
     // 4. Extract text from Claude response
     let text = response_json["content"][0]["text"]
@@ -184,40 +195,44 @@ pub async fn analyze_image_cloud(
         dim_map.insert(name, id);
     }
 
-    // Remove old auto attributes
-    conn.execute(
-        "DELETE FROM image_attributes WHERE image_id = ?1 AND is_auto = 1",
-        rusqlite::params![image_id],
-    )
-    .map_err(|e| e.to_string())?;
-
-    // Insert AI-suggested attributes
-    let mut attr_ids_with_confidence: Vec<(String, f64)> = Vec::new();
-    for suggestion in &parsed.attributes {
-        let dim_id = match dim_map.get(&suggestion.dimension) {
-            Some(id) => id.clone(),
-            None => continue, // Skip unknown dimensions
-        };
-
-        let attr_id = find_or_create_attribute(&conn, &dim_id, &suggestion.value)?;
+    // Wrap all DB writes in a transaction so auto-attribute update is atomic
+    let write_result = (|| -> Result<Vec<(String, f64)>, String> {
+        conn.execute("BEGIN IMMEDIATE", []).map_err(|e| e.to_string())?;
 
         conn.execute(
-            "INSERT OR IGNORE INTO image_attributes (image_id, attribute_id, confidence, is_auto, is_primary) VALUES (?1, ?2, ?3, 1, 0)",
-            rusqlite::params![image_id, attr_id, suggestion.confidence],
-        )
-        .map_err(|e| e.to_string())?;
+            "DELETE FROM image_attributes WHERE image_id = ?1 AND is_auto = 1",
+            rusqlite::params![image_id],
+        ).map_err(|e| e.to_string())?;
 
-        attr_ids_with_confidence.push((attr_id, suggestion.confidence));
-    }
+        let mut pairs: Vec<(String, f64)> = Vec::new();
+        for suggestion in &parsed.attributes {
+            let dim_id = match dim_map.get(&suggestion.dimension) {
+                Some(id) => id.clone(),
+                None => continue,
+            };
+            let attr_id = find_or_create_attribute(&conn, &dim_id, &suggestion.value)?;
+            conn.execute(
+                "INSERT OR IGNORE INTO image_attributes (image_id, attribute_id, confidence, is_auto, is_primary) VALUES (?1, ?2, ?3, 1, 0)",
+                rusqlite::params![image_id, attr_id, suggestion.confidence],
+            ).map_err(|e| e.to_string())?;
+            pairs.push((attr_id, suggestion.confidence));
+        }
 
-    // 6. Mark top 4 by confidence as primary
-    attr_ids_with_confidence.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-    for (attr_id, _) in attr_ids_with_confidence.iter().take(4) {
-        conn.execute(
-            "UPDATE image_attributes SET is_primary = 1 WHERE image_id = ?1 AND attribute_id = ?2",
-            rusqlite::params![image_id, attr_id],
-        )
-        .map_err(|e| e.to_string())?;
+        pairs.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        for (attr_id, _) in pairs.iter().take(4) {
+            conn.execute(
+                "UPDATE image_attributes SET is_primary = 1 WHERE image_id = ?1 AND attribute_id = ?2",
+                rusqlite::params![image_id, attr_id],
+            ).map_err(|e| e.to_string())?;
+        }
+
+        conn.execute("COMMIT", []).map_err(|e| e.to_string())?;
+        Ok(pairs)
+    })();
+
+    if let Err(e) = write_result {
+        conn.execute("ROLLBACK", []).ok();
+        return Err(e);
     }
 
     Ok(parsed)
