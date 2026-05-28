@@ -7,7 +7,7 @@
 - **前端**: React + TypeScript + TailwindCSS + Zustand
 - **后端**: Tauri v2 (Rust)
 - **数据库**: SQLite
-- **AI**: CLIP embedding + 结构化属性识别
+- **AI**: Claude Vision API 结构化属性识别（本地模型待扩展）
 
 ## 开发
 
@@ -32,6 +32,6 @@ sudo apt-get install -y build-essential \
 | 1 | 项目脚手架 | ✅ |
 | 2 | 图片导入 + 结构化属性模型 | ✅ |
 | 3 | 属性管理面板 + 交互完善 | ✅ |
-| 4 | AI 结构化识别 + Embedding | 待开始 |
+| 4 | AI 结构化识别 (Claude Vision API) | ✅ |
 | 5 | 搜索 + 截图 | 待开始 |
 | 6 | 浮窗 + 收藏夹 | 待开始 |
